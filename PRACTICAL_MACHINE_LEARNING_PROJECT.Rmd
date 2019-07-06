@@ -1,0 +1,177 @@
+---
+title: "PRACTICAL MACHINE LEARNING PROJECT"
+author: "Eric Neil Pena"
+date: "July 1, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+#Submission Content
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+
+#Data
+
+Training Data
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+
+Testing Data
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+#Install and Load the necessarry packages
+```{r, results='hide', message=FALSE, warning=FALSE}
+chooseCRANmirror(graphics = FALSE, ind=1)
+install.packages("caret")
+library(caret)
+
+
+```
+
+#Load The Dataset
+```{r}
+train <- 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv'
+
+test <- 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv'
+
+trainingDF <- read.csv(train)
+testingDF <- read.csv(test)
+```
+#Data PArtitioning; Split training and validation set
+estimate the out-of-sample error
+
+```{r}
+set.seed(113098)
+inTrain <- createDataPartition(y=trainingDF$classe, p=0.7, list = FALSE)
+trainingDFX <- trainingDF[inTrain,]
+validationDF <- trainingDF[-inTrain,]
+```
+#Data pre-processing
+remove NA values for both training and validation set
+
+remove variables with near zero variance
+```{r}
+nearZero <- nearZeroVar(trainingDFX)
+trainingDFX <- trainingDFX[,-nearZero]
+validationDF <- validationDF[,-nearZero]
+```
+
+remove variables with NA
+```{r}
+NAindex <- sapply(trainingDFX, function(x) mean(is.na(x))) > 0.95
+trainingDFX <- trainingDFX[,NAindex == FALSE]
+validationDF <- validationDF[,NAindex == FALSE]
+```
+feature selection
+```{r}
+trainingDFX <- trainingDFX[,-(1:5)]
+validationDF <- validationDF[,-(1:5)]
+```
+
+#Build the Model
+I'm going to use random forest model because it pose the highest accuracy with 3 fold cross validation
+
+3 fold cross validation to select optimal tuning validation
+```{r}
+fitControl <- trainControl(method = "cv", number = 3, verboseIter = FALSE)
+```
+
+fit the model on trainingDFX set
+
+```{r}
+fit <- train(classe ~., data=trainingDFX, method = 'rf', trControl=fitControl)
+```
+Show the final model
+
+```{r}
+fit$finalModel
+```
+
+#Model Selection and Evaluation
+use the fitted model to predict the Y variable in validationDF and show the confusion matrix to compare the predict vs actual 
+```{r}
+pred <- predict(fit, newdata = validationDF)
+```
+
+Confusion Matrix
+```{r}
+confusionMatrix(validationDF$classe, pred)
+```
+
+#Retrain the selected model in the initial train set
+
+remove near zero variance
+```{r}
+nearZero <- nearZeroVar(testingDF)
+trainingDF <- trainingDF[,-nearZero]
+testingDF <- testingDF[,-nearZero]
+```
+
+Remove NA
+
+```{r}
+NAindex <- sapply(trainingDF, function(x) mean(is.na(x))) > 0.95
+trainingDF <- trainingDF[,NAindex == FALSE]
+testingDF <- testingDF[,NAindex == FALSE]
+```
+
+Feature selection for the retrain model
+
+```{r}
+trainingDF <- trainingDF[,-(1:5)]
+testingDF <- testingDF[,-(1:5)]
+```
+
+re-fit the model
+```{r}
+fitControl <- trainControl(method = 'cv', number = 3, verboseIter = FALSE)
+fit <- train(classe ~., data=trainingDF, method = 'rf', trControl=fitControl)
+```
+
+#Test Prediction
+
+```{r}
+pred <- predict(fit, newdata = testingDF)
+pred
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
